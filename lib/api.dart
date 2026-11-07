@@ -25,8 +25,15 @@ class ApiError implements Exception {
 class Api {
   Api._(this._dio, this._jar);
 
+  /// For tests: a Dio whose answers the test decides, and cookies kept in memory.
+  factory Api.forTests(Dio dio) {
+    final jar = CookieJar();
+    dio.interceptors.add(CookieManager(jar));
+    return Api._(dio, jar);
+  }
+
   final Dio _dio;
-  final PersistCookieJar _jar;
+  final CookieJar _jar;
 
   static Future<Api> create() async {
     final dir = await getApplicationSupportDirectory();
@@ -78,7 +85,11 @@ class Api {
 
   Future<void> forgetSession() async {
     await _jar.deleteAll();
-    await WebViewCookieManager().clearCookies();
+    try {
+      await WebViewCookieManager().clearCookies();
+    } catch (_) {
+      // no web views on this platform (tests)
+    }
   }
 }
 

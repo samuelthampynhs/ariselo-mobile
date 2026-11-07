@@ -139,6 +139,12 @@ class Account {
     required this.currentPeriodEnd,
     required this.paymentsMode,
     required this.freeDailyQuestions,
+    this.referralCode = '',
+    this.referralLink = '',
+    this.referralMonths = 1,
+    this.friendsJoined = 0,
+    this.friendsPaid = 0,
+    this.freeMonths = 0,
   });
 
   final String status; // trialing | active | cancelled | past_due | free
@@ -151,6 +157,14 @@ class Account {
   final String? currentPeriodEnd;
   final String paymentsMode; // test | stripe
   final int freeDailyQuestions;
+
+  /// Share Ariselo: friends who join with this code and pay give both families free months.
+  final String referralCode;
+  final String referralLink;
+  final int referralMonths;
+  final int friendsJoined;
+  final int friendsPaid;
+  final int freeMonths;
 
   factory Account.fromJson(Map<String, dynamic> j) {
     final q = (j['quote'] ?? const {}) as Map<String, dynamic>;
@@ -165,6 +179,12 @@ class Account {
       currentPeriodEnd: j['current_period_end'] as String?,
       paymentsMode: (j['payments_mode'] ?? 'test') as String,
       freeDailyQuestions: (j['free_daily_questions'] ?? 0) as int,
+      referralCode: (j['referral_code'] ?? '') as String,
+      referralLink: (j['referral_link'] ?? '') as String,
+      referralMonths: (j['referral_free_months'] ?? 1) as int,
+      friendsJoined: ((j['referrals'] ?? const {}) as Map)['joined'] as int? ?? 0,
+      friendsPaid: ((j['referrals'] ?? const {}) as Map)['paid'] as int? ?? 0,
+      freeMonths: (j['free_months'] ?? 0) as int,
     );
   }
 }

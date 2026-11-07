@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../api.dart';
 import '../../avatars.dart';
@@ -7,8 +8,6 @@ import '../../theme.dart';
 import '../../widgets.dart';
 import 'child_edit.dart';
 import 'child_report.dart';
-import 'plan.dart';
-import 'settings.dart';
 
 /// The parent's home: their children, the family code, and the way to each child's report.
 class FamilyScreen extends StatefulWidget {
@@ -20,6 +19,7 @@ class FamilyScreen extends StatefulWidget {
 
 class _FamilyScreenState extends State<FamilyScreen> {
   Family? _family;
+  Account? _account;
   String _error = '';
 
   @override
@@ -30,9 +30,17 @@ class _FamilyScreenState extends State<FamilyScreen> {
 
   Future<void> _load() async {
     try {
-      final f = Family.fromJson((await SessionScope.of(context).api.get('identity', '/family')) as Map<String, dynamic>);
+      final api = SessionScope.of(context).api;
+      final f = Family.fromJson((await api.get('identity', '/family')) as Map<String, dynamic>);
+      Account? a;
+      try {
+        a = Account.fromJson((await api.get('billing', '/account')) as Map<String, dynamic>);
+      } on ApiError {
+        a = null; // the plan details are a bonus here; the family still shows
+      }
       setState(() {
         _family = f;
+        _account = a;
         _error = '';
       });
     } catch (e) {
@@ -62,17 +70,7 @@ class _FamilyScreenState extends State<FamilyScreen> {
     final f = _family;
     void go(Widget w) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => w));
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Hello, ${me?.name.split(' ').first ?? ''}'),
-        actions: [
-          IconButton(
-            tooltip: 'Plan',
-            icon: const Icon(Icons.workspace_premium_outlined),
-            onPressed: () => go(const PlanScreen()),
-          ),
-          IconButton(tooltip: 'Settings', icon: const Icon(Icons.settings_outlined), onPressed: () => go(const SettingsScreen())),
-        ],
-      ),
+      appBar: AppBar(title: Text('Hello, ${me?.name.split(' ').first ?? ''}')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _edit(),
         icon: const Icon(Icons.add),
@@ -82,7 +80,13 @@ class _FamilyScreenState extends State<FamilyScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+            // on a tablet, a comfortable reading width in the middle
+            padding: EdgeInsets.fromLTRB(
+              20 + _sideSpace(context),
+              8,
+              20 + _sideSpace(context),
+              100,
+            ),
             children: [
               ErrorNotice(_error),
               if (me?.emailVerified == false)
@@ -148,10 +152,66 @@ class _FamilyScreenState extends State<FamilyScreen> {
                       ),
                     ),
                   ),
+                if (_account != null && _account!.referralCode.isNotEmpty) ReferralCard(account: _account!),
               ],
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Extra space each side on wide screens, so the page stays about 680px wide.
+double _sideSpace(BuildContext context) {
+  var w = MediaQuery.sizeOf(context).width;
+  if (w >= 720) w -= 81; // the side rail
+  return w > 720 ? (w - 680) / 2 : 0;
+}
+
+/// Share Ariselo: the family's code and link; friends who join and pay give both families free months.
+class ReferralCard extends StatelessWidget {
+  const ReferralCard({super.key, required this.account});
+  final Account account;
+
+  @override
+  Widget build(BuildContext context) {
+    final a = account;
+    final months = '${a.referralMonths} month${a.referralMonths == 1 ? '' : 's'}';
+    final friends = a.friendsJoined == 0
+        ? 'No friends have joined yet.'
+        : '${a.friendsJoined} joined, ${a.friendsPaid} started a plan.';
+    return Card(
+      color: Brand.grapeSoft,
+      margin: const EdgeInsets.only(top: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Share Ariselo, get a free month', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 6),
+          Text('When a friend joins with your code ${a.referralCode} and starts a plan, you both get $months free.'),
+          const SizedBox(height: 10),
+          SelectableText(a.referralLink, style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.copy),
+            label: const Text('Copy link'),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: a.referralLink));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied. Paste it into a message to a friend.')));
+              }
+            },
+          ),
+          const SizedBox(height: 6),
+          Text(friends, style: Theme.of(context).textTheme.bodySmall),
+          if (a.freeMonths > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text('You have ${a.freeMonths} free month${a.freeMonths > 1 ? 's' : ''} waiting',
+                  style: const TextStyle(color: Brand.good, fontWeight: FontWeight.w700)),
+            ),
+        ]),
       ),
     );
   }

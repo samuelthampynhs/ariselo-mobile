@@ -62,17 +62,55 @@ flutter test
 gives them the right app's name and ID. Once they are committed from a Mac, the two apps become
 proper Xcode schemes and Android product flavours ("dev" and "prod") instead. Only `lib/`, `test/` and `pubspec.yaml` are hand-written.
 
-## Before the stores
+## Getting the apps into the stores
 
-| | Apple App Store | Google Play |
-|---|---|---|
-| Account | Apple Developer Program, £79 a year | Play Console, $25 once |
-| Signing | certificate and profile; App Store Connect API key as a GitHub secret | an upload key (keystore) as a GitHub secret |
-| Children | "Kids" category rules: no third-party ads or analytics, a parental gate before links out or payments | "Designed for Families" / Families policy: the same spirit, plus a target-age declaration |
-| Payments | selling the subscription inside the app means in-app purchase; showing a plan bought on the web and linking to manage it needs care with App Review | Google Play Billing for in-app sales; same question |
+Every push to main uploads **Ariselo Dev** to Google Play's internal testing and to TestFlight;
+a version tag (`git tag v1.0.0 && git push --tags`) uploads **Ariselo** to Google Play
+production (as a draft) and App Store Connect. Each store switches on when its keys are in
+**Settings > Secrets and variables > Actions > Secrets**; until then it's skipped with a note.
+Store builds show a family's plan but no way to buy it: both stores require their own payment
+system for subscriptions bought inside an app, so families buy and change plans on the website.
 
-The Plan screen and links out are only in the grown-ups' part; the children's part keeps them
-inside /learn.
+### Google Play (Play Console, $25 once)
+
+1. Create a developer account at play.google.com/console (a company account needs a D-U-N-S
+   number; a personal one must run a closed test with 12 testers for 14 days first).
+2. Create two apps: **Ariselo Dev** (package `uk.co.ariselo.app.dev`) and **Ariselo**
+   (`uk.co.ariselo.app`). Fill in the store listing, content rating, target audience
+   (children: the Families policy applies) and the data safety form.
+3. Make an upload key once, on any computer with Java:
+   `keytool -genkey -v -keystore upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload`
+   then add `ANDROID_UPLOAD_KEYSTORE` (`base64 -i upload.jks`), `ANDROID_UPLOAD_KEY_ALIAS`
+   (`upload`) and `ANDROID_UPLOAD_KEY_PASSWORD`. Keep upload.jks safe; Google holds the real
+   signing key (Play App Signing).
+4. The very first upload of each app is by hand: download the `app-release.aab` from a CI run
+   (Artifacts) and upload it in Play Console > Testing > Internal testing.
+5. Google Cloud console: make a service account, download its JSON key, and invite its email in
+   Play Console > Users and permissions with "Release to testing tracks" and "Release to
+   production". Add the JSON as `PLAY_SERVICE_ACCOUNT_JSON`.
+6. Testers: add their emails to the internal testing list; they get a link to install Ariselo Dev.
+
+### Apple (Apple Developer Program, £79 a year)
+
+1. Enrol at developer.apple.com/programs (as an organisation it needs a D-U-N-S number).
+2. App Store Connect > Apps > **+**: create **Ariselo Dev** (bundle ID `uk.co.ariselo.app.dev`)
+   and **Ariselo** (`uk.co.ariselo.app`). Register the bundle IDs first under Certificates,
+   Identifiers & Profiles if they aren't offered.
+3. App Store Connect > Users and Access > Integrations > App Store Connect API: make a key with
+   the **App Manager** role. Add `APP_STORE_CONNECT_KEY` (the .p8 file's text),
+   `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`, and `APPLE_TEAM_ID` (Membership
+   details).
+4. TestFlight: add yourself and testers; each dev build arrives there after Apple's processing.
+5. For the App Store: the listing, screenshots, privacy details, the **Kids category** (no
+   third-party ads or analytics, a parental gate before links out of the app), then
+   **Add for Review** on the build a tag uploaded.
+
+### Download links on the website
+
+When the store pages exist, put their links in ariselo-infra (`app_store_url` and
+`play_store_url` for each environment); the website shows "Download for iPhone" and
+"Download for Android" buttons. For dev, use the TestFlight public link and the Play internal
+testing opt-in link.
 
 **Next (phase 2):** the question engine (ariselo-app `frontend/src/curriculum/engine.js`)
 natively in the app, so practice works offline and feels fully native.

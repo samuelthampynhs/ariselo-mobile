@@ -19,6 +19,20 @@ case "$env" in
 esac
 
 flutter create --platforms="$platforms" --org uk.co.ariselo --project-name ariselo_mobile . >/dev/null
+flutter pub get >/dev/null
+
+# The app icon: the kite, with a "DEV" band on the dev app so the two are easy to tell apart.
+icon="assets/icon/icon.png"; [ "$env" = dev ] && icon="assets/icon/icon-dev.png"
+cfg="$(mktemp -d)/icons.yaml"
+cat > "$cfg" <<YAML
+flutter_launcher_icons:
+  android: true
+  ios: $([[ "$platforms" == *ios* ]] && echo true || echo false)
+  image_path: "$icon"
+  remove_alpha_ios: true
+YAML
+dart run flutter_launcher_icons -f "$cfg" >/dev/null
+rm -rf "$(dirname "$cfg")"
 
 sedi() { sed -i.bak "$@"; rm -f "${@: -1}.bak"; }
 
@@ -34,14 +48,21 @@ if [ -d android ]; then
   done
 fi
 
-if [ -d ios ]; then
+if [ -d ios ] && [[ "$platforms" == *ios* ]]; then
   # the app's own ID (the test target keeps its .RunnerTests suffix)
   pbx=ios/Runner.xcodeproj/project.pbxproj
-  sedi -E "/RunnerTests;/ s/PRODUCT_BUNDLE_IDENTIFIER = [A-Za-z0-9.]+;/PRODUCT_BUNDLE_IDENTIFIER = $id.RunnerTests;/" "$pbx"
-  sedi -E "/RunnerTests;/! s/PRODUCT_BUNDLE_IDENTIFIER = [A-Za-z0-9.]+;/PRODUCT_BUNDLE_IDENTIFIER = $id;/" "$pbx"
+  # perl, not sed: the same on Linux and on macOS
+  perl -pi -e "s/PRODUCT_BUNDLE_IDENTIFIER = [A-Za-z0-9.]+\.RunnerTests;/PRODUCT_BUNDLE_IDENTIFIER = $id.RunnerTests;/; s/PRODUCT_BUNDLE_IDENTIFIER = (?![A-Za-z0-9.]+\.RunnerTests;)[A-Za-z0-9.]+;/PRODUCT_BUNDLE_IDENTIFIER = $id;/" "$pbx"
   if command -v /usr/libexec/PlistBuddy >/dev/null; then
     /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $name" ios/Runner/Info.plist
     /usr/libexec/PlistBuddy -c "Set :CFBundleName $name" ios/Runner/Info.plist
+    # standard HTTPS only: no export-compliance questions on each upload
+    /usr/libexec/PlistBuddy -c "Delete :ITSAppUsesNonExemptEncryption" ios/Runner/Info.plist 2>/dev/null || true
+    /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" ios/Runner/Info.plist
+  fi
+  # Signing for the App Store: Xcode manages certificates and profiles for this team.
+  if [ -n "${APPLE_TEAM_ID:-}" ]; then
+    perl -pi -e "s/^(\s*)(PRODUCT_BUNDLE_IDENTIFIER = $id;)/\1\2\n\1DEVELOPMENT_TEAM = $APPLE_TEAM_ID;\n\1CODE_SIGN_STYLE = Automatic;/" "$pbx"
   fi
 fi
 echo "$name ($id): $platforms ready"

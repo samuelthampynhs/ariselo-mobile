@@ -22,11 +22,18 @@ class ApiError implements Exception {
 /// The only place that talks to the backend: `/api/<service>/<path>` on [baseUrl].
 /// Signing in sets the same session cookie the website uses; it is kept on the phone (so
 /// the app stays signed in) and copied into the web views that show lessons and practice.
-class Api {
-  Api._(this._dio, this._jar);
+/// A stand-in backend for tests: answers `GET /api/identity/me` and the like, or throws ApiError.
+typedef FakeBackend = Future<dynamic> Function(String method, String path, Object? body);
 
-  final Dio _dio;
-  final PersistCookieJar _jar;
+class Api {
+  Api._(this._dio, this._jar, [this._fake]);
+
+  /// For tests: no network, no cookies; [backend] answers every request.
+  factory Api.forTests(FakeBackend backend) => Api._(null, null, backend);
+
+  final Dio? _dio;
+  final CookieJar? _jar;
+  final FakeBackend? _fake;
 
   static Future<Api> create() async {
     final dir = await getApplicationSupportDirectory();
@@ -44,9 +51,10 @@ class Api {
   }
 
   Future<dynamic> _send(String method, String service, String path, [Object? body]) async {
+    if (_fake != null) return _fake(method, '/api/$service$path', body);
     Response<dynamic> r;
     try {
-      r = await _dio.request<dynamic>('/api/$service$path', data: body, options: Options(method: method));
+      r = await _dio!.request<dynamic>('/api/$service$path', data: body, options: Options(method: method));
     } on DioException {
       throw ApiError(0, 'offline', "We can't reach Ariselo. Check your internet connection and try again.");
     }
@@ -68,17 +76,24 @@ class Api {
 
   /// Gives the web views the same session as the app.
   Future<void> shareSessionWithWebViews() async {
+    final jar = _jar;
+    if (jar == null) return;
     final uri = Uri.parse(baseUrl);
     final manager = WebViewCookieManager();
     await manager.clearCookies();
-    for (final c in await _jar.loadForRequest(uri)) {
+    for (final c in await jar.loadForRequest(uri)) {
       await manager.setCookie(WebViewCookie(name: c.name, value: c.value, domain: uri.host, path: c.path ?? '/'));
     }
   }
 
   Future<void> forgetSession() async {
-    await _jar.deleteAll();
-    await WebViewCookieManager().clearCookies();
+    await _jar?.deleteAll();
+    if (_jar == null) return;
+    try {
+      await WebViewCookieManager().clearCookies();
+    } catch (_) {
+      // no web views on this platform (tests)
+    }
   }
 }
 

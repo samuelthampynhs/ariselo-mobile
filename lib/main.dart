@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'api.dart';
 import 'config.dart';
 import 'screens/kids/learn.dart';
-import 'screens/parent/family.dart';
+import 'screens/parent/parent_home.dart';
 import 'screens/welcome.dart';
 import 'session.dart';
 import 'theme.dart';
@@ -48,7 +48,7 @@ class Home extends StatelessWidget {
     final me = s.me;
     if (me == null) return const WelcomeScreen();
     if (me.isChild) return const LearnScreen();
-    if (me.isParent) return const FamilyScreen();
+    if (me.isParent) return const ParentHome();
     return AppPage(title: 'Ariselo', children: [
       const Text('Team accounts use the website for now.', style: TextStyle(fontSize: 18)),
       const SizedBox(height: 16),

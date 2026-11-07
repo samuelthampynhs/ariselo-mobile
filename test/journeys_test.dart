@@ -6,6 +6,8 @@ import 'dart:convert';
 import 'package:ariselo_mobile/api.dart';
 import 'package:ariselo_mobile/main.dart';
 import 'package:ariselo_mobile/screens/parent/family.dart';
+import 'package:ariselo_mobile/screens/parent/plan.dart';
+import 'package:ariselo_mobile/widgets.dart';
 import 'package:ariselo_mobile/session.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -195,5 +197,19 @@ void main() {
     expect(find.text("That PIN isn't right. Try again."), findsOneWidget);
     expect(find.bySemanticsLabel('0 of 4 numbers entered'), findsOneWidget);
     semantics.dispose();
+  });
+
+  testWidgets('store builds show the plan but no way to buy (App Store and Google Play rules)', (t) async {
+    final backend = Backend({
+      'GET /api/identity/me': (200, parent),
+      'GET /api/billing/account': (200, account),
+    });
+    final s = await signedInAs(backend);
+    await t.pumpWidget(SessionScope(session: s, child: const MaterialApp(home: PlanScreen(storeRules: true))));
+    await t.pumpAndSettle();
+    expect(find.text('Free trial: 6 days left'), findsOneWidget);
+    expect(find.textContaining('Monthly'), findsNothing);
+    expect(find.textContaining('Stripe'), findsNothing);
+    expect(find.textContaining('managed on the Ariselo website'), findsOneWidget);
   });
 }

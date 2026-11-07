@@ -1,0 +1,153 @@
+# Store releases: signed builds of both apps, uploaded to Google Play and App Store Connect.
+#
+#   push to main  -> Ariselo Dev  -> Google Play "internal testing" + TestFlight (testers only)
+#   tag v1.2.3    -> Ariselo      -> Google Play production (as a draft) + App Store Connect
+#                                    (you press "Send for review" / "Roll out" in each store)
+#   Actions > Release > Run       -> either app, by hand
+#
+# Each store switches on when its keys are in this repository's Actions secrets; until then
+# that part is skipped with a note (README, "Before the stores"):
+#   Google Play:  PLAY_SERVICE_ACCOUNT_JSON, ANDROID_UPLOAD_KEYSTORE (base64 of the .jks),
+#                 ANDROID_UPLOAD_KEY_ALIAS, ANDROID_UPLOAD_KEY_PASSWORD
+#   Apple:        APPLE_TEAM_ID, APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID,
+#                 APP_STORE_CONNECT_KEY (the .p8 file's text)
+# Store builds show a family's plan but no way to buy one (both stores' rules).
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths-ignore: ["**/*.md"]
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "Which app"
+        type: choice
+        options: [dev, prod]
+        default: dev
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  APP: ${{ inputs.app || (startsWith(github.ref, 'refs/tags/v') && 'prod') || 'dev' }}
+  # every upload needs a higher build number than the last one
+  BUILD: ${{ github.run_number }}
+
+jobs:
+  # Which stores have their keys set (checked on a cheap Linux runner, so no macOS minutes
+  # are spent while the Apple keys are missing).
+  keys:
+    name: Store keys
+    runs-on: ubuntu-latest
+    outputs:
+      play: ${{ steps.k.outputs.play }}
+      apple: ${{ steps.k.outputs.apple }}
+    steps:
+      - id: k
+        env:
+          PLAY: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          KEYSTORE: ${{ secrets.ANDROID_UPLOAD_KEYSTORE }}
+          ASC: ${{ secrets.APP_STORE_CONNECT_KEY }}
+          TEAM: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -n "$PLAY" ] && [ -n "$KEYSTORE" ]; then echo "play=true" >> "$GITHUB_OUTPUT"
+          else echo "::notice::Google Play is skipped: its keys aren't in the Actions secrets yet."; fi
+          if [ -n "$ASC" ] && [ -n "$TEAM" ]; then echo "apple=true" >> "$GITHUB_OUTPUT"
+          else echo "::notice::The App Store is skipped: its keys aren't in the Actions secrets yet."; fi
+
+  google-play:
+    name: Google Play
+    needs: keys
+    if: needs.keys.outputs.play == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Build the app bundle
+        run: |
+          scripts/platforms.sh "$APP" android
+          flutter build appbundle --release --build-number="$BUILD" \
+            --dart-define-from-file="env/$APP.json" --dart-define=STORE_BUILD=true
+      - name: Sign it with the upload key
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_UPLOAD_KEYSTORE }}
+          ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          PASS: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          aab=build/app/outputs/bundle/release/app-release.aab
+          echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          zip -qd "$aab" 'META-INF/*' || true   # the build's own (debug) signature
+          jarsigner -keystore "$RUNNER_TEMP/upload.jks" -storepass "$PASS" -keypass "$PASS" \
+            -sigalg SHA256withRSA -digestalg SHA-256 "$aab" "$ALIAS" >/dev/null
+          jarsigner -verify "$aab" >/dev/null && echo "Signed."
+          rm -f "$RUNNER_TEMP/upload.jks"
+      - name: Upload
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ env.APP == 'prod' && 'uk.co.ariselo.app' || 'uk.co.ariselo.app.dev' }}
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: ${{ env.APP == 'prod' && 'production' || 'internal' }}
+          status: ${{ env.APP == 'prod' && 'draft' || 'completed' }}
+
+  app-store:
+    name: App Store
+    needs: keys
+    if: needs.keys.outputs.apple == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Build, sign and upload to App Store Connect
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+        run: |
+          set -euo pipefail
+          scripts/platforms.sh "$APP" ios
+          flutter build ios --release --no-codesign --build-number="$BUILD" \
+            --dart-define-from-file="env/$APP.json" --dart-define=STORE_BUILD=true
+          keyfile="$RUNNER_TEMP/AuthKey_$KEY_ID.p8"
+          printf '%s' "$KEY" > "$keyfile"
+          auth=(-allowProvisioningUpdates -authenticationKeyPath "$keyfile"
+                -authenticationKeyID "$KEY_ID" -authenticationKeyIssuerID "$ISSUER")
+          xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Ariselo.xcarchive" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic "${auth[@]}" archive | tail -5
+          cat > "$RUNNER_TEMP/export.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          PLIST
+          # uploads straight to App Store Connect (the dev app then appears in TestFlight)
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Ariselo.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/export.plist" -exportPath "$RUNNER_TEMP/export" "${auth[@]}" | tail -5
+          rm -f "$keyfile"
+          echo "Uploaded build $BUILD of the $APP app to App Store Connect."

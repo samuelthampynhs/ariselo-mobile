@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../api.dart';
+import '../../config.dart';
 import '../../models.dart';
 import '../../theme.dart';
 import '../../widgets.dart';
 
 /// The family's plan. Paying happens on Stripe's own page, in the browser.
 class PlanScreen extends StatefulWidget {
-  const PlanScreen({super.key});
+  const PlanScreen({super.key, this.storeRules = storeBuild});
+
+  /// Store builds: no buying or links to buy (App Store and Google Play rules).
+  final bool storeRules;
 
   @override
   State<PlanScreen> createState() => _PlanScreenState();
@@ -80,7 +84,13 @@ class _PlanScreenState extends State<PlanScreen> {
             child: Text('This is the test site: no real payments are taken.', style: TextStyle(color: Brand.muted)),
           ),
         const SizedBox(height: 12),
-        if (a.status != 'active' || a.cancelAtPeriodEnd) ...[
+        if (widget.storeRules)
+          // App Store and Google Play: the plan is shown, but bought and changed elsewhere
+          const Text(
+            'Your family plan is chosen and managed on the Ariselo website, with the same account.',
+            style: TextStyle(color: Brand.muted),
+          )
+        else if (a.status != 'active' || a.cancelAtPeriodEnd) ...[
           FilledButton(
             onPressed: _busy ? null : () => _open('/checkout', {'interval': 'monthly'}),
             child: Text('Monthly · ${pounds(a.monthlyPence)}'),
@@ -95,9 +105,11 @@ class _PlanScreenState extends State<PlanScreen> {
             onPressed: _busy ? null : () => _open('/portal'),
             child: const Text('Change card, plan or cancel'),
           ),
-        const SizedBox(height: 16),
-        const Text('Payments open on Stripe in your browser; come back here when you are done.',
-            style: TextStyle(color: Brand.muted)),
+        if (!widget.storeRules) ...[
+          const SizedBox(height: 16),
+          const Text('Payments open on Stripe in your browser (Apple Pay, Google Pay or a card); come back here when you are done.',
+              style: TextStyle(color: Brand.muted)),
+        ],
       ],
     ]);
   }

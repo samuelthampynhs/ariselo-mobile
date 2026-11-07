@@ -2,34 +2,32 @@
 // screen, the referral card, and a child logging in with their picture and PIN. The API is a
 // stand-in with the website's real answer shapes; nothing goes over the network.
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:ariselo_mobile/api.dart';
 import 'package:ariselo_mobile/main.dart';
+import 'package:ariselo_mobile/screens/parent/family.dart';
 import 'package:ariselo_mobile/session.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Answers requests from a table: "GET /api/identity/me" -> (status, body).
-class FakeBackend implements HttpClientAdapter {
-  FakeBackend(this.routes);
+/// Answers requests from a table: "GET /api/identity/me" -> (status, body), the way the
+/// backend does (an error status becomes ApiError with the backend's message).
+class Backend {
+  Backend(this.routes);
   final Map<String, (int, Object?)> routes;
   final List<String> seen = [];
 
-  @override
-  Future<ResponseBody> fetch(RequestOptions o, Stream<Uint8List>? body, Future<void>? cancel) async {
-    final key = '${o.method} ${o.uri.path}';
+  Future<dynamic> call(String method, String path, Object? body) async {
+    final key = '$method $path';
     seen.add(key);
     final (status, out) = routes[key] ?? (404, {'error': 'not_found', 'message': 'Not found'});
-    return ResponseBody.fromString(jsonEncode(out), status, headers: {
-      Headers.contentTypeHeader: [Headers.jsonContentType],
-    });
+    if (status >= 400) {
+      final m = out as Map;
+      throw ApiError(status, m['error'] as String, m['message'] as String);
+    }
+    return jsonDecode(jsonEncode(out)); // plain maps and lists, as from the network
   }
-
-  @override
-  void close({bool force = false}) {}
 }
 
 const parent = {'id': 'u1', 'role': 'parent', 'name': 'Rosa Silva', 'email': 'rosa@example.test', 'email_verified': true};
@@ -58,9 +56,8 @@ const account = {
   'free_months': 1,
 };
 
-Future<Session> signedInAs(FakeBackend backend) async {
-  final dio = Dio(BaseOptions(baseUrl: 'https://dev.ariselo.co.uk', validateStatus: (_) => true))..httpClientAdapter = backend;
-  final s = Session(Api.forTests(dio));
+Future<Session> signedInAs(Backend backend) async {
+  final s = Session(Api.forTests(backend.call));
   await s.refresh();
   return s;
 }
@@ -77,7 +74,7 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   testWidgets('a parent on a phone: tabs along the bottom, family, plan and account', (t) async {
-    final backend = FakeBackend({
+    final backend = Backend({
       'GET /api/identity/me': (200, parent),
       'GET /api/identity/family': (200, family),
       'GET /api/billing/account': (200, account),
@@ -92,7 +89,11 @@ void main() {
     expect(find.text('Start Tomasz'), findsOneWidget);
 
     // the referral card: code, link, how many friends joined
-    await t.scrollUntilVisible(find.text('Copy link'), 200);
+    await t.scrollUntilVisible(
+      find.text('Copy link'),
+      200,
+      scrollable: find.descendant(of: find.byType(FamilyScreen), matching: find.byType(Scrollable)).first,
+    );
     expect(find.textContaining('RISE-N54AD'), findsWidgets);
     expect(find.text('2 joined, 1 started a plan.'), findsOneWidget);
 
@@ -111,7 +112,7 @@ void main() {
   });
 
   testWidgets('a parent on a tablet: a rail down the side instead of bottom tabs', (t) async {
-    final backend = FakeBackend({
+    final backend = Backend({
       'GET /api/identity/me': (200, parent),
       'GET /api/identity/family': (200, family),
       'GET /api/billing/account': (200, account),
@@ -125,7 +126,7 @@ void main() {
   });
 
   testWidgets('a parent on a small Android phone: nothing overflows', (t) async {
-    final backend = FakeBackend({
+    final backend = Backend({
       'GET /api/identity/me': (200, parent),
       'GET /api/identity/family': (200, family),
       'GET /api/billing/account': (200, account),
@@ -138,7 +139,7 @@ void main() {
   });
 
   testWidgets('a child logs in: family code, their picture, their PIN', (t) async {
-    final backend = FakeBackend({
+    final backend = Backend({
       'GET /api/identity/me': (401, {'error': 'unauthorised', 'message': 'Please log in.'}),
       'GET /api/identity/kids/YAK-7635': (200, {
         'children': [
@@ -168,7 +169,9 @@ void main() {
   });
 
   testWidgets('a wrong PIN: told so, and the dots clear', (t) async {
-    final backend = FakeBackend({
+    final semantics = t.ensureSemantics();
+    addTearDown(semantics.dispose);
+    final backend = Backend({
       'GET /api/identity/me': (401, {'error': 'unauthorised', 'message': 'Please log in.'}),
       'GET /api/identity/kids/YAK-7635': (200, {
         'children': [

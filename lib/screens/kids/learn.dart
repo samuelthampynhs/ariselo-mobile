@@ -74,10 +74,22 @@ class _LearnScreenState extends State<LearnScreen> {
   Widget build(BuildContext context) {
     final me = SessionScope.of(context).me;
     final web = _web;
+    // Android's back button: back a page inside the lessons first, rather than closing the app.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (web != null && await web.canGoBack()) await web.goBack();
+      },
+      child: _scaffold(me?.name, web),
+    );
+  }
+
+  Widget _scaffold(String? name, WebViewController? web) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Brand.page,
-        title: Text(me == null ? 'Ariselo' : 'Hi ${me.name}!'),
+        title: Text(name == null ? 'Ariselo' : 'Hi $name!'),
         actions: [
           TextButton.icon(onPressed: _finish, icon: const Icon(Icons.logout), label: const Text("I'm done")),
         ],

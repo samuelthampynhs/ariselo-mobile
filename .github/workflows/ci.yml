@@ -1,0 +1,111 @@
+# Ariselo's phone app (Flutter): one codebase, an iPhone app and an Android app.
+#
+#   every pull request and push to main -> analyse and test, then build the Android app
+#                                          (an installable APK, kept for 14 days)
+#   Actions > CI > Run workflow           -> also build the iPhone app on macOS (unsigned):
+#                                          a simulator build to open in Xcode's Simulator
+# macOS minutes count 10x on GitHub's Free plan, so the iPhone build only runs when asked.
+#
+# The app talks to https://dev.ariselo.co.uk; pass ARISELO_URL to point a build elsewhere.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ios:
+        description: "Build the iPhone app (macOS runner)"
+        type: boolean
+        default: true
+      url:
+        description: "Site the app talks to"
+        type: string
+        default: "https://dev.ariselo.co.uk"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ARISELO_URL: ${{ inputs.url || 'https://dev.ariselo.co.uk' }}
+
+jobs:
+  check:
+    name: Analyse and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: scripts/platforms.sh ios,android
+      - run: flutter pub get
+      - name: Format (reported, not yet enforced)
+        continue-on-error: true
+        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Analyse
+        run: flutter analyze --no-fatal-infos
+      - name: Test
+        run: flutter test
+
+  android:
+    name: Build for Android
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: scripts/platforms.sh android
+      - run: flutter pub get
+      - name: APK (installs on any Android phone; signed with a test key)
+        run: flutter build apk --release --dart-define=ARISELO_URL="$ARISELO_URL"
+      - name: App bundle (what Google Play takes, once a real signing key is set up)
+        run: flutter build appbundle --release --dart-define=ARISELO_URL="$ARISELO_URL"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ariselo-android
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+          retention-days: 14
+
+  ios:
+    name: Build for iPhone
+    needs: check
+    if: github.event_name == 'workflow_dispatch' && inputs.ios
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: scripts/platforms.sh ios
+      - run: flutter pub get
+      - name: Simulator build
+        run: |
+          flutter build ios --simulator --debug --dart-define=ARISELO_URL="$ARISELO_URL"
+          cd build/ios/iphonesimulator && zip -qry ../../../Ariselo-simulator.zip Runner.app
+      - name: Device build, unsigned
+        run: flutter build ios --release --no-codesign --dart-define=ARISELO_URL="$ARISELO_URL"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ariselo-ios-simulator
+          path: Ariselo-simulator.zip
+          retention-days: 14

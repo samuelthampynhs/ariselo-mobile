@@ -170,7 +170,6 @@ void main() {
 
   testWidgets('a wrong PIN: told so, and the dots clear', (t) async {
     final semantics = t.ensureSemantics();
-    addTearDown(semantics.dispose);
     final backend = Backend({
       'GET /api/identity/me': (401, {'error': 'unauthorised', 'message': 'Please log in.'}),
       'GET /api/identity/kids/YAK-7635': (200, {
@@ -195,5 +194,6 @@ void main() {
     await t.pumpAndSettle();
     expect(find.text("That PIN isn't right. Try again."), findsOneWidget);
     expect(find.bySemanticsLabel('0 of 4 numbers entered'), findsOneWidget);
+    semantics.dispose();
   });
 }

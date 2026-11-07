@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api.dart';
+import 'config.dart';
 import 'screens/kids/learn.dart';
 import 'screens/parent/family.dart';
 import 'screens/welcome.dart';
@@ -28,6 +29,9 @@ class AriseloApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: ariseloTheme(),
         home: const Home(),
+        builder: (context, child) => isDevApp
+            ? Banner(message: 'DEV', location: BannerLocation.topEnd, child: child ?? const SizedBox.shrink())
+            : child ?? const SizedBox.shrink(),
       ),
     );
   }

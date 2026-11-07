@@ -1,0 +1,26 @@
+name: ariselo_mobile
+description: "Ariselo for iPhone (and Android): the parent and child app."
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dio: ^5.4.0
+  dio_cookie_manager: ^3.1.1
+  cookie_jar: ^4.0.8
+  path_provider: ^2.1.2
+  shared_preferences: ^2.2.2
+  url_launcher: ^6.2.5
+  webview_flutter: ^4.7.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

@@ -96,6 +96,12 @@ jobs:
             -sigalg SHA256withRSA -digestalg SHA-256 "$aab" "$ALIAS" >/dev/null
           jarsigner -verify "$aab" >/dev/null && echo "Signed."
           rm -f "$RUNNER_TEMP/upload.jks"
+      - name: Keep the signed bundle (for the first upload by hand)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ariselo-${{ env.APP }}-${{ env.BUILD }}.aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 90
       - name: Upload
         uses: r0adkll/upload-google-play@v1
         with:

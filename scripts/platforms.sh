@@ -46,6 +46,14 @@ if [ -d android ]; then
   for g in android/app/build.gradle.kts android/app/build.gradle; do
     [ -f "$g" ] && sedi -E "s/applicationId( =)? \"[^\"]*\"/applicationId\1 \"$id\"/" "$g"
   done
+  # Lint's release check crashes on some plugins (url_launcher_android) with the current
+  # build tools, and it adds nothing to the store upload. Skip it; the tests and CI still run.
+  cat >> android/build.gradle.kts <<'LINT' 2>/dev/null || true
+// Ariselo: the release lint check crashes on some plugins; skipped (see scripts/platforms.sh)
+subprojects {
+    tasks.matching { it.name.startsWith("lintVital") }.configureEach { enabled = false }
+}
+LINT
 fi
 
 if [ -d ios ] && [[ "$platforms" == *ios* ]]; then

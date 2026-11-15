@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../api.dart';
 import '../../avatars.dart';
 import '../../models.dart';
-import '../../theme.dart';
 import '../../widgets.dart';
 
 /// Add a child, or change one: name, year group, picture and PIN.

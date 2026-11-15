@@ -1,5 +1,4 @@
 import 'package:ariselo_mobile/screens/welcome.dart';
-import 'package:ariselo_mobile/theme.dart';
 import 'package:ariselo_mobile/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

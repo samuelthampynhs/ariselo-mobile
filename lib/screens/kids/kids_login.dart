@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../api.dart';
 import '../../avatars.dart';
 import '../../models.dart';
-import '../../theme.dart';
 import '../../widgets.dart';
 
 /// Children log in: family code → tap your picture → 4-number PIN. No names or emails to type.

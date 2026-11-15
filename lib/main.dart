@@ -6,7 +6,6 @@ import 'screens/kids/learn.dart';
 import 'screens/parent/parent_home.dart';
 import 'screens/welcome.dart';
 import 'session.dart';
-import 'theme.dart';
 import 'widgets.dart';
 
 Future<void> main() async {

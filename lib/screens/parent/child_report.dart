@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../api.dart';
 import '../../avatars.dart';
 import '../../models.dart';
-import '../../theme.dart';
 import '../../widgets.dart';
 
 /// How a child is doing: the last 30 days, each subject, and their latest answers.

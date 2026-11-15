@@ -21,7 +21,7 @@ esac
 flutter create --platforms="$platforms" --org uk.co.ariselo --project-name ariselo_mobile . >/dev/null
 flutter pub get >/dev/null
 
-# The app icon: the kite, with a "DEV" band on the dev app so the two are easy to tell apart.
+# The app icon: the Rising A (the A of Ariselo with the sun coming up), with a "DEV" band on the dev app so the two are easy to tell apart.
 icon="assets/icon/icon.png"; [ "$env" = dev ] && icon="assets/icon/icon-dev.png"
 cfg="$(mktemp -d)/icons.yaml"
 cat > "$cfg" <<YAML

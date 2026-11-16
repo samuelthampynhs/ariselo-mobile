@@ -18,6 +18,26 @@ backend are in [ariselo-app](https://github.com/samuelthampynhs/ariselo-app), th
 
 Different IDs mean both can sit on the same phone. A fix is made once and goes into both.
 
+## Ariselo Tabs (tablets, Reception and Year 1)
+
+A third app from the same code, for children who can't read yet. They sign in (family code,
+picture, PIN) and the website's `/tabs` page fills the screen: their own grown-ups' 3D avatars
+read every question aloud, and every tile and answer says itself when tapped. Grown-ups make the
+avatars on the website (**Grown-ups**, with a photo ID check), reached from the app's
+**For grown-ups** button behind a sum for adults.
+
+| | **Ariselo Tabs Dev** | **Ariselo Tabs** |
+|---|---|---|
+| Talks to | dev.ariselo.co.uk | ariselo.co.uk |
+| App ID | `uk.co.ariselo.tabs.dev` | `uk.co.ariselo.tabs` |
+| Make and run | `scripts/platforms.sh tabs-dev` then `flutter run --dart-define-from-file=env/tabs-dev.json` | `tabs-prod`, `env/tabs-prod.json` |
+| Built by CI | Actions → CI → Run workflow → `tabs-dev` | `tabs-prod` |
+
+The avatars' voice comes from the tablet's own text-to-speech (`lib/tabs/speech_bridge.dart`):
+Android's WebView has no speech, so the app stands in for the page's `speechSynthesis` and sends
+the word timings back for lip-sync. How the avatars are made and kept safe: ariselo-app
+`docs/tabs.md`.
+
 ## What's in it
 
 **Grown-ups**

@@ -3,6 +3,9 @@
 #
 #   scripts/platforms.sh dev  [ios,android]   "Ariselo Dev"  uk.co.ariselo.app.dev  dev.ariselo.co.uk
 #   scripts/platforms.sh prod [ios,android]   "Ariselo"      uk.co.ariselo.app      ariselo.co.uk
+#   scripts/platforms.sh tabs-dev  [...]      "Ariselo Tabs Dev" uk.co.ariselo.tabs.dev  dev.ariselo.co.uk
+#   scripts/platforms.sh tabs-prod [...]      "Ariselo Tabs"     uk.co.ariselo.tabs      ariselo.co.uk
+#   (Ariselo Tabs: the tablet app for Reception and Year 1, built with env/tabs-<env>.json)
 #
 # Same code, different app: its own name, store listing and ID, so both fit on one phone.
 # The site it talks to is chosen when building (--dart-define-from-file=env/<env>.json).
@@ -15,14 +18,16 @@ platforms="${2:-ios,android}"
 case "$env" in
   dev)  id="uk.co.ariselo.app.dev"; name="Ariselo Dev" ;;
   prod) id="uk.co.ariselo.app";     name="Ariselo" ;;
-  *) echo "env is dev or prod" >&2; exit 1 ;;
+  tabs-dev)  id="uk.co.ariselo.tabs.dev"; name="Ariselo Tabs Dev" ;;
+  tabs-prod) id="uk.co.ariselo.tabs";     name="Ariselo Tabs" ;;
+  *) echo "env is dev, prod, tabs-dev or tabs-prod" >&2; exit 1 ;;
 esac
 
 flutter create --platforms="$platforms" --org uk.co.ariselo --project-name ariselo_mobile . >/dev/null
 flutter pub get >/dev/null
 
 # The app icon: the Rising A (the A of Ariselo with the sun coming up), with a "DEV" band on the dev app so the two are easy to tell apart.
-icon="assets/icon/icon.png"; [ "$env" = dev ] && icon="assets/icon/icon-dev.png"
+icon="assets/icon/icon.png"; [[ "$env" == *dev ]] && icon="assets/icon/icon-dev.png"
 cfg="$(mktemp -d)/icons.yaml"
 cat > "$cfg" <<YAML
 flutter_launcher_icons:

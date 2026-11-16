@@ -3,6 +3,9 @@
 #   Ariselo Dev   uk.co.ariselo.app.dev   dev.ariselo.co.uk   built on every push to main
 #   Ariselo       uk.co.ariselo.app       ariselo.co.uk       built for a version tag (v1.0.0)
 #
+#   Ariselo Tabs (tablets, Reception and Year 1): uk.co.ariselo.tabs(.dev), built when chosen
+#   in Actions > CI > Run (tabs-dev or tabs-prod)
+#
 #   pull request          -> analyse and test
 #   push to main          -> analyse, test, build Ariselo Dev for Android (APK + app bundle)
 #   tag v1.2.3            -> analyse, test, build Ariselo for Android
@@ -23,7 +26,7 @@ on:
       app:
         description: "Which app"
         type: choice
-        options: [dev, prod]
+        options: [dev, prod, tabs-dev, tabs-prod]
         default: dev
       ios:
         description: "Also build for iPhone (macOS runner)"

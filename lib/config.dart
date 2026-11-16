@@ -9,3 +9,7 @@ bool get isDevApp => Uri.parse(baseUrl).host != 'ariselo.co.uk';
 /// Builds for the App Store and Google Play. Their rules don't allow buying a subscription
 /// outside the store from inside the app, so these builds show the plan but no way to buy.
 const bool storeBuild = bool.fromEnvironment('STORE_BUILD');
+
+/// Ariselo Tabs: the tablet app for Reception and Year 1 (--dart-define-from-file=env/tabs-dev.json).
+/// Children only; their grown-ups' avatars read the questions aloud. See lib/tabs/.
+const bool tabsApp = String.fromEnvironment('ARISELO_APP') == 'tabs';

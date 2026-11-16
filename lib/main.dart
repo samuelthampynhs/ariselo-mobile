@@ -6,6 +6,7 @@ import 'screens/kids/learn.dart';
 import 'screens/parent/parent_home.dart';
 import 'screens/welcome.dart';
 import 'session.dart';
+import 'tabs/tabs_app.dart';
 import 'widgets.dart';
 
 Future<void> main() async {
@@ -24,10 +25,10 @@ class AriseloApp extends StatelessWidget {
     return SessionScope(
       session: session,
       child: MaterialApp(
-        title: 'Ariselo',
+        title: tabsApp ? 'Ariselo Tabs' : 'Ariselo',
         debugShowCheckedModeBanner: false,
         theme: ariseloTheme(),
-        home: const Home(),
+        home: tabsApp ? const TabsHome() : const Home(),
         builder: (context, child) => isDevApp
             ? Banner(message: 'DEV', location: BannerLocation.topEnd, child: child ?? const SizedBox.shrink())
             : child ?? const SizedBox.shrink(),

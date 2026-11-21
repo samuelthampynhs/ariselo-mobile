@@ -3,42 +3,43 @@ import 'package:flutter/material.dart';
 /// Every colour the app uses. The same values as the website (ariselo-app
 /// frontend/src/design/tokens.css) and the Ariselo design system: change them together.
 class Brand {
-  // brand: the four kite colours
-  static const blue = Color(0xFF2F6FDB);
-  static const blueDeep = Color(0xFF1F55B8);
-  static const blueSoft = Color(0xFFE6EFFF);
-  static const sun = Color(0xFFFFC23D);
-  static const sunSoft = Color(0xFFFFF4D6);
-  static const coral = Color(0xFFFF6B57);
-  static const coralSoft = Color(0xFFFFE8E4);
-  static const grape = Color(0xFF7C4DDB);
-  static const grapeSoft = Color(0xFFEFE8FF);
+  // brand: calm teal and warm amber on cream paper, with slate ink.
+  // `blue` is the main colour (teal); the name stays so every widget keeps working.
+  static const blue = Color(0xFF0F766E);
+  static const blueDeep = Color(0xFF115E59);
+  static const blueSoft = Color(0xFFCCFBF1);
+  static const sun = Color(0xFFF59E0B);
+  static const sunSoft = Color(0xFFFEF3C7);
+  static const coral = Color(0xFFEA6A52);
+  static const coralSoft = Color(0xFFFDE8E3);
+  static const grape = Color(0xFF6D5BD0);
+  static const grapeSoft = Color(0xFFEEEBFB);
 
   // text and surfaces
-  static const ink = Color(0xFF1F2A55);
-  static const ink2 = Color(0xFF4A5683);
-  static const muted = Color(0xFF576389); // 4.9:1 on page, card and blue-soft
-  static const line = Color(0xFFD9E1F2); // decorative edges only
-  static const lineStrong = Color(0xFFB9C6E4);
-  static const edge = Color(0xFF7A86AA); // edges of things you type in or choose: 3.6:1 on white
-  static const page = Color(0xFFF7FBFF);
+  static const ink = Color(0xFF1E293B);
+  static const ink2 = Color(0xFF334155);
+  static const muted = Color(0xFF475569); // 7:1 on the cream page
+  static const line = Color(0xFFE2E8F0); // decorative edges only
+  static const lineStrong = Color(0xFFCBD5E1);
+  static const edge = Color(0xFF64748B); // edges of things you type in or choose: 4.8:1 on white
+  static const page = Color(0xFFFAF9F6);
   static const card = Color(0xFFFFFFFF);
 
   // feedback: use the -ink colours for text on the -soft grounds
-  static const good = Color(0xFF13854F);
-  static const goodSoft = Color(0xFFE1F6EA);
-  static const goodInk = Color(0xFF0E6B3F);
-  static const bad = Color(0xFFD0313F); // system errors and destructive actions only
-  static const badSoft = Color(0xFFFDE7E9);
-  static const badInk = Color(0xFFB32634);
-  static const warnInk = Color(0xFF7A5300);
-  static const blueInk = Color(0xFF2559C4);
-  static const grapeInk = Color(0xFF6A3FC4);
+  static const good = Color(0xFF15803D);
+  static const goodSoft = Color(0xFFDCFCE7);
+  static const goodInk = Color(0xFF166534);
+  static const bad = Color(0xFFC2410C); // system errors and destructive actions only
+  static const badSoft = Color(0xFFFFEDD5);
+  static const badInk = Color(0xFF9A3412);
+  static const warnInk = Color(0xFF92400E);
+  static const blueInk = Color(0xFF0F766E);
+  static const grapeInk = Color(0xFF5B47C2);
 
   // learning: a child's "not quite" is amber, never red; help always looks the same
   static const nudge = sunSoft;
   static const nudgeInk = warnInk;
-  static const nudgeEdge = Color(0xFFA87300);
+  static const nudgeEdge = Color(0xFFB45309);
   static const hint = grapeSoft;
   static const hintInk = grapeInk;
 }
@@ -61,9 +62,9 @@ class Space {
 /// Corner radii.
 class Radii {
   static const sm = 10.0; // fields
-  static const md = 16.0; // notices, answer options, stat tiles
-  static const lg = 24.0; // cards, sheets
-  static const xl = 32.0; // things that rise from the bottom edge
+  static const md = 14.0; // notices, answer options, stat tiles
+  static const lg = 18.0; // cards, sheets
+  static const xl = 24.0; // things that rise from the bottom edge
   static const pill = 999.0; // buttons, chips, pills
 }
 
